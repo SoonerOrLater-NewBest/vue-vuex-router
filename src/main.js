@@ -16,6 +16,9 @@ Vue.config.productionTip = false
 //     var vConsole = new VConsole();
 // }
 
+// 实际打包时应该不引入mock
+if (process.env.NODE_ENV !== 'production') require('@/mock')
+
 // 全局过滤器
 Object.keys(filters).forEach(filterName => {
     Vue.filter(filterName, filters[filterName])
