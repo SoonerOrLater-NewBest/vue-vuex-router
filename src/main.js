@@ -5,9 +5,12 @@ import store from './store'
 import i18n from './locale'
 import filters from './filters'
 
+// 引入ele-ui
+import Element  from 'element-ui'
+import 'element-ui/lib/theme-chalk/index.css'
 import Toast from './components/toast/index'
 Vue.use(Toast);
-
+Vue.use(Element)
 Vue.config.productionTip = false
 
 // 如果是非线上环境，加载 VConsole（移动端适用）

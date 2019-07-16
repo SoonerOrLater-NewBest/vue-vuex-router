@@ -12,6 +12,7 @@
         "animate.css": "^3.7.0",
         "axios": "^0.18.0",
         "dayjs": "^1.7.7",
+        "element-ui": "^2.10.1",
         "number-precision": "^1.2.1",
         "tween.js": "^16.6.0",
         "vconsole": "^3.2.0",
