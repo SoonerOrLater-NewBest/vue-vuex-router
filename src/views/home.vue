@@ -1,179 +1,247 @@
 <template>
-  <div class="home">
-    <el-container>
-      <el-header>Header</el-header>
-      <el-main>
-        <el-breadcrumb separator="/">
-          <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
-          <el-breadcrumb-item :to="{ path: '/about' }">活动管理</el-breadcrumb-item>
-          <el-breadcrumb-item>活动列表</el-breadcrumb-item>
-          <el-breadcrumb-item>活动详情</el-breadcrumb-item>
-        </el-breadcrumb>
-        <div style="margin: 20px 0;overflow:hidden;">
-          <el-button size="small" @click="toggleSelection()">全不选</el-button>
-          <el-button size="small" @click="deleteAll">批量删除</el-button>
-          <el-button size="small" @click="add">新增</el-button>
-          <div style="float:right">
-            <el-select
-              size="small"
-              v-model="listQuery.status"
-              placeholder="全部状态"
-              clearable
-              style="width: 120px;margin-right:10px;"
-              class="filter-item"
-              @change="handleFilter"
-            >
-              <el-option v-for="item in status" :key="item" :label="item" :value="item" />
-            </el-select>
-            <el-input
-              size="small"
-              v-model="listQuery.title"
-              placeholder="Title"
-              style="width: 160px;"
-              class="filter-item"
-              @keyup.enter.native="handleFilter"
-            />
-            <el-button size="small" icon="el-icon-search" style="padding: 8px 14px;border-left:0 none;" @click="handleFilter"></el-button>
-          </div>
-        </div>
-        <el-table
-          v-loading="listLoading"
-          ref="multipleTable"
-          :data="list"
-          tooltip-effect="dark"
-          style="width: 100%"
-          @selection-change="handleSelectionChange"
-        >
-          <el-table-column type="selection" width="55"></el-table-column>
-          <el-table-column type="index" width="55"></el-table-column>
-          <el-table-column label="日期" width="120">
-            <template slot-scope="scope">{{ scope.row.date }}</template>
-          </el-table-column>
-          <el-table-column prop="name" label="姓名" width="120"></el-table-column>
-          <el-table-column prop="address" label="地址" show-overflow-tooltip></el-table-column>
-        </el-table>
-
-        <pagination
-          v-show="total>0"
-          :total="total"
-          :page.sync="listQuery.page"
-          :limit.sync="listQuery.limit"
-          @pagination="getList"
-        />
-      </el-main>
-    </el-container>
+  <div class="page">
+    <el-header :title="title" fixed>
+      <a slot="left" @click="goBack">
+        <mt-button icon="back">返回</mt-button>
+      </a>
+    </el-header>
+    <el-upload action :before-upload="handleBeforeUpload" accept=".xls, .xlsx">
+      <el-button
+        icon="ios-cloud-upload-outline"
+        :loading="uploadLoading"
+        @click="handleUploadFile"
+      >上传文件</el-button>
+    </el-upload>
+    <div class="container">
+      <div class="chat_record">
+        <div
+          style="color:blue;text-align:center;line-height:2.5;"
+          @click="msglist"
+          v-if="show"
+        >查看历史消息</div>
+      </div>
+    </div>
+    <div class="chat-wrap">
+      <input type="text" placeholder="输入聊天内容" class="chat_input" />
+      <div class="send_input" @click="send">发送</div>
+    </div>
+    <transition name="slide">
+      <router-view></router-view>
+    </transition>
   </div>
 </template>
 
 <script>
-// @ is an alias to /src
-import Pagination from "@/components/Pagination";
-import { getUserInfo } from "@/api/common";
-import animate from "animate.css";
-import TWEEN from "tween.js";
-let item = {
-  date: "2016-05-07",
-  name: "王小虎",
-  address: "上海市普陀区金沙江路 1518 弄"
-};
-
 export default {
-  name: "home",
-  components: {
-    Pagination
-  },
   data() {
     return {
-      total: 0,
-      list: [],
-      listLoading: true,
-      listQuery: {
-        page: 1,
-        limit: 20,
-        status: '',
-        title: ''
-      },
-      status: ["正常", "已删除", "VIP"],
-      multipleSelection: []
+      title: "",
+      from: "",
+      to: "",
+      uname: "",
+      websock: null,
+      show: true
     };
   },
   created() {
-    this.getList();
+    console.log(this.$route.query);
+    this.initWebSocket();
+    this.title = this.$route.query.toname;
+    this.from = this.$route.query.from;
+    this.to = this.$route.query.to;
+    this.uname = this.$route.query.uname;
   },
   methods: {
-     handleFilter() {
-      this.listQuery.page = 1
-      this.getList()
-    },
-    getList(e = {}) {
-      this.listLoading = true;
-      // 此处赋值时，传入this.listQuery作筛选
-      console.log(this.listQuery);
-      this.list = [
-        {
-          date: "2016-05-03",
-          name: "王小虎",
-          address: "上海市普陀区金沙江路 1518 弄"
-        },
-        {
-          date: "2016-05-02",
-          name: "王小虎",
-          address: "上海市普陀区金沙江路 1518 弄"
-        },
-        {
-          date: "2016-05-04",
-          name: "王小虎",
-          address: "上海市普陀区金沙江路 1518 弄"
-        },
-        {
-          date: "2016-05-01",
-          name: "王小虎",
-          address: "上海市普陀区金沙江路 1518 弄"
-        },
-        {
-          date: "2016-05-08",
-          name: "王小虎",
-          address: "上海市普陀区金沙江路 1518 弄"
-        },
-        {
-          date: "2016-05-06",
-          name: "王小虎",
-          address: "上海市普陀区金沙江路 1518 弄"
-        },
-        {
-          date: "2016-05-07",
-          name: "王小虎",
-          address: "上海市普陀区金沙江路 1518 弄"
-        }
-      ];
-      this.total = 60;
-      setTimeout(() => {
-        this.listLoading = false;
-      }, 1.5 * 1000);
-    },
-    toggleSelection(rows) {
-      if (rows) {
-        rows.forEach(row => {
-          this.$refs.multipleTable.toggleRowSelection(row);
-        });
+    handleBeforeUpload (file) {
+      const fileExt = file.name.split('.').pop().toLocaleLowerCase()
+      if (fileExt === 'xlsx' || fileExt === 'xls') {
+        // this.readFile(file)
+        console.log(file);
+        let data = new FormData();
+        data.append('xlxs',file)
+        console.log(data);
+        this.file = file
       } else {
-        this.$refs.multipleTable.clearSelection();
+        this.$notify({
+          type: 'warning',
+          title: '文件类型错误',
+          message: '文件：' + file.name + '不是EXCEL文件，请选择后缀为.xlsx或者.xls的EXCEL文件。'
+        })
+      }
+      return false
+    },
+    msglist() {
+      let _this = this;
+    },
+    goBack() {
+      this.$router.go(-1);
+    },
+    setMsg(msg) {
+      let _this = this;
+    },
+    send() {
+      var t = this;
+      var content = $(".chat_input").val();
+      if (content == "") return;
+      var reg = new RegExp("\r\n", "g");
+      content = content.replace(reg, "");
+      var msg = { content: content.trim(), type: "user", toname: t.title };
+      this.websocketsend(msg);
+      $(".chat_input").val("");
+      this.setMsg(content);
+    },
+    initWebSocket() {
+      //初始化weosocket
+      const wsuri = "";
+      this.websock = new WebSocket(wsuri);
+      this.websock.onmessage = this.websocketonmessage;
+      this.websock.onopen = this.websocketonopen;
+      this.websock.onerror = this.websocket;
+      this.websock.onclose = this.websocketclose;
+    },
+    websocketonopen() {
+      //连接建立之后执行send方法发送数据
+      console.log("连接已建立");
+    },
+    websocket() {
+      //连接建立失败重连
+      this.initWebSocket();
+    },
+    websocketonmessage(e) {
+      //数据接收
+      var t = this;
+      var msg = JSON.parse(e.data);
+      var issend = false;
+      var from = "1"; //1 自己  2，对方
+      var sender, user_name, name_list, change_type, name_all_list;
+
+      switch (msg.type) {
+        case "system":
+          issend = true;
+          sender = "系统消息: ";
+          break;
+        case "user":
+          if (msg.from == t.title || msg.from == t.uname) {
+            issend = true;
+            if (msg.from == t.title) {
+              from = 2;
+            }
+            sender = msg.from + ": ";
+          } else {
+            var froms = msg.from;
+            //$(".to_name_"+froms).css("background","red");
+            //$(".to_name_"+froms).animate({backgroundColor: "#aa0000"},3000);
+            var shine = $(".to_name_" + froms);
+
+            function starshine() {
+              if (shine.hasClass("star")) {
+                shine.removeClass("star");
+              } else {
+                shine.addClass("star");
+              }
+            }
+
+            shinefunc(starshine);
+          }
+
+          break;
+        case "handshake":
+          issend = true;
+          var user_info = { type: "login", content: t.uname, toname: t.title };
+          t.websocketsend(user_info);
+          return;
+        case "login":
+        case "logout":
+          issend = true;
+          user_name = msg.content;
+          name_list = msg.user_list;
+          name_all_list = msg.user_all_list;
+
+          change_type = msg.type;
+          // dealUser(user_name, change_type, name_list,name_all_list);
+          return;
+      }
+
+      if (issend) {
+        var data = sender + msg.content;
+        t.listMsg(data, from);
       }
     },
-    handleSelectionChange(val) {
-      this.multipleSelection = val;
-      console.log(val);
+    websocketsend(msg) {
+      //数据发送
+      var data = JSON.stringify(msg);
+      this.websock.send(data);
     },
-    deleteAll() {
-      console.log("删除选中的：", this.multipleSelection);
+    listMsg(data, from) {
+      var str = "";
+      if (from == 1) {
+        str = ' <p class="my_chat">' + data + "</p>";
+      } else {
+        str = ' <p class="your_chat">' + data + "</p>";
+      }
+      $(".chat_record").append(str);
     },
-    add() {
-      alert("TODO");
+    websocketclose(e) {
+      //关闭
+      console.log("断开连接", e);
     }
-  }
+  },
+  mounted() {},
+
+  destroyed() {
+    this.websock.close(); //离开路由之后断开websocket连接
+  },
+  components: {}
 };
 </script>
+<style>
+.my_chat {
+  text-align: right;
+  padding: 0.1rem 0.15rem;
+}
+.your_chat {
+  text-align: left;
+  padding: 0.1rem 0.15rem;
+}
+</style>
 
 <style lang="scss" scoped>
-@import "~@/assets/iconfont/iconfont.css";
+.page {
+  .container {
+    padding: 0.5rem 0;
+    background: #fff;
+  }
+  .chat-wrap {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 0.5rem;
+    display: flex;
+    align-items: center;
+    z-index: 9999;
+    &::before {
+      position: absolute;
+      content: "";
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 0;
+      border-top: 1px solid #eee;
+      transform: scaleY(0.7);
+    }
+    input {
+      flex: 1;
+      padding: 0.1rem 0.15rem;
+      height: 100%;
+      background: #f7f7f7;
+    }
+    .send_input {
+      background: red;
+      color: #fff;
+      width: 0.8rem;
+      line-height: 0.5rem;
+    }
+  }
+}
 </style>
